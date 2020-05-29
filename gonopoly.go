@@ -1,12 +1,13 @@
-package main
+package gonopoly
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
-
-	"github.com/gookit/color"
 )
 
 type property struct {
@@ -15,26 +16,57 @@ type property struct {
 	Color string
 }
 
+type cardSet struct {
+	Props []property
+	Total int
+}
+
 // CardCount Change this if you want to start with less properties by default
 const CardCount = 4
 
+// Randomize returns random cards based on input
+func Randomize(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+
+	cardCount, cErr := strconv.Atoi(params.Get("cardCount"))
+	playerCount, pErr := strconv.Atoi(params.Get("playerCount"))
+
+	if cErr != nil || pErr != nil || cardCount <= 0 || playerCount <= 0 {
+		http.Error(w, "2Bad Card/Player Count", 422)
+		return
+	}
+	cardSet, err := run(playerCount, cardCount)
+	if err != nil {
+		http.Error(w, "test:"+err.Error(), 500)
+		return
+	}
+
+	js, err := json.Marshal(cardSet)
+	if err != nil {
+		http.Error(w, "tesm:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+}
+
 func main() {
-	err := run()
+	cardSet, err := run(4, 4)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println("Enjoy!")
+	fmt.Println("Enjoy!", cardSet)
 }
 
-func run() (err error) {
-	fmt.Print("How many players?:")
-	var playersNum int
-	_, err = fmt.Scanf("%d", &playersNum)
-	if err != nil {
-		return err
-	}
+func (c *cardSet) AddCard(p property) {
+	c.Props = append(c.Props, p)
+	c.Total += p.Price
+}
 
+func run(playersNum int, cardCount int) (cards map[int]*cardSet, err error) {
+	cards = make(map[int]*cardSet)
 	props := make([]property, 0, 28)
 	props = append(props, property{Name: "Mediterranean Ave.", Price: 60, Color: "mgb"},
 		property{Name: "Baltic Ave.", Price: 60, Color: "mgb"},
@@ -66,20 +98,18 @@ func run() (err error) {
 		property{Name: "Short Line Railroad", Price: 200, Color: "darkGray"})
 
 	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
+
 	for i := 1; i <= playersNum; i++ {
-		cost := 0
-		color.Notice.Println("Player", i, "starting cards:")
-		for c := 0; c < CardCount; c++ {
+		var cardGroup cardSet
+		(cards)[i] = &cardGroup
+		for c := 0; c < cardCount; c++ {
 			randomIndex := rand.Intn(len(props))
-			prop := props[randomIndex]
-			cost += prop.Price
-			color.Printf("<%s>%s</> - Price: %d\n", prop.Color, prop.Name, prop.Price)
+			(cards)[i].AddCard(props[randomIndex])
 			// Remove the element at index i from a.
 			props[randomIndex] = props[len(props)-1] // Copy last element to index i.
 			props[len(props)-1] = property{}         // Erase last element (write zero value).
 			props = props[:len(props)-1]             // Truncate slice.
 		}
-		color.Notice.Println("Player", i, "total cost: $", cost, "\n")
 	}
-	return nil
+	return cards, nil
 }
