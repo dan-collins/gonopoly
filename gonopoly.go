@@ -32,18 +32,18 @@ func Randomize(w http.ResponseWriter, r *http.Request) {
 	playerCount, pErr := strconv.Atoi(params.Get("playerCount"))
 
 	if cErr != nil || pErr != nil || cardCount <= 0 || playerCount <= 0 {
-		http.Error(w, "2Bad Card/Player Count", 422)
+		http.Error(w, "Bad Card/Player Count", 422)
 		return
 	}
 	cardSet, err := run(playerCount, cardCount)
 	if err != nil {
-		http.Error(w, "test:"+err.Error(), 500)
+		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	js, err := json.Marshal(cardSet)
 	if err != nil {
-		http.Error(w, "tesm:"+err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
