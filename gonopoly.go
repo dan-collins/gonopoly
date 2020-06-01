@@ -17,8 +17,9 @@ type property struct {
 }
 
 type cardSet struct {
-	Props []property
-	Total int
+	Player string
+	Props  []property
+	Total  int
 }
 
 // CardCount Change this if you want to start with less properties by default
@@ -65,8 +66,7 @@ func (c *cardSet) AddCard(p property) {
 	c.Total += p.Price
 }
 
-func run(playersNum int, cardCount int) (cards map[int]*cardSet, err error) {
-	cards = make(map[int]*cardSet)
+func run(playersNum int, cardCount int) (cards []*cardSet, err error) {
 	props := make([]property, 0, 28)
 	props = append(props, property{Name: "Mediterranean Ave.", Price: 60, Color: "mgb"},
 		property{Name: "Baltic Ave.", Price: 60, Color: "mgb"},
@@ -101,15 +101,16 @@ func run(playersNum int, cardCount int) (cards map[int]*cardSet, err error) {
 
 	for i := 1; i <= playersNum; i++ {
 		var cardGroup cardSet
-		(cards)[i] = &cardGroup
+		cardGroup.Player = fmt.Sprintf("Player %d", i)
 		for c := 0; c < cardCount; c++ {
 			randomIndex := rand.Intn(len(props))
-			(cards)[i].AddCard(props[randomIndex])
+			cardGroup.AddCard(props[randomIndex])
 			// Remove the element at index i from a.
 			props[randomIndex] = props[len(props)-1] // Copy last element to index i.
 			props[len(props)-1] = property{}         // Erase last element (write zero value).
 			props = props[:len(props)-1]             // Truncate slice.
 		}
+		cards = append(cards, &cardGroup)
 	}
 	return cards, nil
 }
